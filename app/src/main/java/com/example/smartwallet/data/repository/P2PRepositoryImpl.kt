@@ -10,22 +10,24 @@ import com.example.smartwallet.domain.model.TransactionStatus
 import com.example.smartwallet.domain.model.User
 import com.example.smartwallet.domain.repository.P2PRepository
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineScope
+import javax.inject.Singleton
 
+@Singleton
 class P2PRepositoryImpl @Inject constructor(
     private val transactionDao: TransactionDao,
     private val apiService: P2PApiService,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
+    @IoDispatcher private val dispatcher: CoroutineDispatcher
 ) : P2PRepository {
 
     private val seedScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -52,7 +54,7 @@ class P2PRepositoryImpl @Inject constructor(
                         amount = 35.0,
                         currency = "USD",
                         status = TransactionStatus.COMPLETED,
-                        createdAt = now - 3600_000,
+                        createdAt = now - 3_600_000,
                         description = "Lunch split"
                     ),
                     TransactionEntity(
@@ -61,7 +63,7 @@ class P2PRepositoryImpl @Inject constructor(
                         amount = 58.0,
                         currency = "USD",
                         status = TransactionStatus.PENDING,
-                        createdAt = now - 7200_000,
+                        createdAt = now - 7_200_000,
                         description = "Utilities"
                     )
                 ).forEach { transactionDao.upsert(it) }
@@ -70,9 +72,10 @@ class P2PRepositoryImpl @Inject constructor(
     }
 
     override fun observeTransactions(): Flow<List<Transaction>> =
-        transactionDao.observeTransactions().map { entities -> entities.map { it.toDomain() } }
+        transactionDao.observeTransactions()
+            .map { entities -> entities.map { it.toDomain() } }
 
-    override suspend fun refreshTransactions() = withContext(dispatcher) {
+    override suspend fun refreshTransactions(): Unit = withContext(dispatcher) {
         val remote = apiService.getTransactions(_currentUser.value.id)
         remote.forEach { transactionDao.upsert(it.toEntity()) }
     }
@@ -82,11 +85,23 @@ class P2PRepositoryImpl @Inject constructor(
         amount: Double,
         currency: String,
         note: String?
-    ) = withContext(dispatcher) {
+    ): Unit = withContext(dispatcher) {
+
         val contacts = apiService.getContacts()
-        val recipient = contacts.first { it.id == toUserId }
+
+        val recipient = contacts.firstOrNull { it.id == toUserId }
+            ?: throw IllegalArgumentException("Recipient with id=$toUserId not found")
+
         val sender = _currentUser.value
-        val transaction = apiService.sendMoney(sender, recipient, amount, currency, note)
+
+        val transaction = apiService.sendMoney(
+            sender = sender,
+            receiver = recipient,
+            amount = amount,
+            currency = currency,
+            note = note
+        )
+
         transactionDao.upsert(transaction.toEntity())
         _currentUser.value = sender.copy(balance = sender.balance - amount)
     }
@@ -96,10 +111,23 @@ class P2PRepositoryImpl @Inject constructor(
         amount: Double,
         currency: String,
         note: String?
-    ) = withContext(dispatcher) {
+    ): Unit = withContext(dispatcher) {
+
         val contacts = apiService.getContacts()
-        val requester = contacts.first { it.id == fromUserId }
-        val transaction = apiService.requestMoney(requester, _currentUser.value, amount, currency, note)
+
+        val requester = contacts.firstOrNull { it.id == fromUserId }
+            ?: throw IllegalArgumentException("User with id=$fromUserId not found")
+
+        val currentUser = _currentUser.value
+
+        val transaction = apiService.requestMoney(
+            requester = requester,
+            receiver = currentUser,
+            amount = amount,
+            currency = currency,
+            note = note
+        )
+
         transactionDao.upsert(transaction.toEntity())
     }
 

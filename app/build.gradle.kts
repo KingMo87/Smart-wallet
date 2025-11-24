@@ -7,12 +7,13 @@ plugins {
 
 android {
     namespace = "com.example.smartwallet"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.smartwallet"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
+
         versionCode = 1
         versionName = "1.0"
 
@@ -31,19 +32,24 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
+
     buildFeatures {
         compose = true
     }
+
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -67,7 +73,14 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
+    implementation("com.google.android.material:material:1.12.0")
+
     implementation(libs.androidx.hilt.navigation.compose)
+
+    // Hilt (versions MATCH)
+    implementation("com.google.dagger:hilt-android:2.52")
+    ksp("com.google.dagger:hilt-compiler:2.52")
+
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
 
@@ -82,8 +95,6 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.accompanist.permissions)
 
-    implementation(libs.truth)
-
     testImplementation(libs.junit)
     testImplementation(libs.truth)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -93,3 +104,7 @@ dependencies {
 
     androidTestImplementation(libs.junit)
 }
+
+
+
+

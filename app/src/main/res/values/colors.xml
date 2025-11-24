@@ -1,5 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="md_theme_primary">#006C4F</color>
-    <color name="md_theme_secondary">#4E6358</color>
-    <color name="md_theme_tertiary">#3D6473</color>
+    <color name="purple_500">#673AB7</color>
+    <color name="purple_200">#BB86FC</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
 </resources>
+
